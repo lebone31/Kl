@@ -1,1 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Birthday Candle</title>
+<style>
+    body {
+        margin: 0;
+        height: 100vh;
+        background: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        color: white;
+    }
 
+    h1 {
+        position: absolute;
+        top: 20px;
+        font-size: 28px;
+        text-align: center;
+        width: 100%;
+    }
+
+    .candle {
+        position: relative;
+        width: 40px;
+        height: 140px;
+        background: linear-gradient(#fff, #f2f2f2);
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .flame {
+        width: 20px;
+        height: 30px;
+        background: orange;
+        border-radius: 50%;
+        position: absolute;
+        top: -35px;
+        animation: flicker 0.2s infinite alternate;
+        box-shadow: 0 0 20px orange;
+    }
+
+    @keyframes flicker {
+        from { transform: scale(1); opacity: 1; }
+        to { transform: scale(1.2); opacity: 0.7; }
+    }
+
+    .plate {
+        width: 120px;
+        height: 10px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+        bottom: -10px;
+    }
+
+    .balloon {
+        position: absolute;
+        bottom: -100px;
+        width: 30px;
+        height: 40px;
+        border-radius: 50%;
+        animation: floatUp 6s linear infinite;
+    }
+
+    @keyframes floatUp {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-120vh); opacity: 0; }
+    }
+
+    button {
+        position: absolute;
+        bottom: 20px;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: white;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🎉 Make a Wish 🎉</h1>
+
+<div class="candle">
+    <div class="flame" id="flame"></div>
+    <div class="plate"></div>
+</div>
+
+<button onclick="startEverything()">Play Me / Start 🎵</button>
+
+<script>
+// ---------------- MUSIC (simple happy tune) ----------------
+let audioCtx;
+
+function playSong() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const notes = [261, 261, 392, 392, 440, 440, 392]; // simple birthday vibe
+    let time = audioCtx.currentTime;
+
+    notes.forEach(freq => {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+
+        osc.frequency.value = freq;
+        osc.type = "sine";
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        gain.gain.setValueAtTime(0.2, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+
+        osc.start(time);
+        osc.stop(time + 0.5);
+
+        time += 0.5;
+    });
+}
+
+// ---------------- BALLOONS ----------------
+function createBalloons() {
+    for (let i = 0; i < 15; i++) {
+        let b = document.createElement("div");
+        b.className = "balloon";
+        b.style.left = Math.random() * window.innerWidth + "px";
+        b.style.background = `hsl(${Math.random()*360},70%,60%)`;
+        b.style.animationDuration = (4 + Math.random()*4) + "s";
+        document.body.appendChild(b);
+    }
+}
+
+// ---------------- BLOW CANDLE ----------------
+let flame = document.getElementById("flame");
+
+function startBlowDetection() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+        const audioCtx = new AudioContext();
+        const mic = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        mic.connect(analyser);
+
+        const data = new Uint8Array(analyser.fftSize);
+
+        function detect() {
+            analyser.getByteTimeDomainData(data);
+
+            let volume = data.reduce((a,b)=>a+b)/data.length;
+
+            if (volume > 130) {
+                flame.style.display = "none";
+            }
+
+            requestAnimationFrame(detect);
+        }
+
+        detect();
+    })
+    .catch(() => {
+        alert("Mic not allowed. Tap screen to blow candle.");
+        document.body.onclick = () => flame.style.display = "none";
+    });
+}
+
+// ---------------- START EVERYTHING ----------------
+function startEverything() {
+    playSong();
+    createBalloons();
+    startBlowDetection();
+}
+</script>
+
+</body>
+</html>
